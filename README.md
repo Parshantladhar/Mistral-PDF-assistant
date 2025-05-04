@@ -49,7 +49,7 @@ streamlit run app.py
 Now, open the browser and go to:
 
 ```
-http://localhost:8501
+http://localhost:####
 ```
 
 ---
@@ -59,14 +59,11 @@ http://localhost:8501
 * 🐍 Python
 * 🦜 LangChain
 * 🌐 Streamlit
-* 🧠 Mistral / PaLM2 (choose your LLM)
+* 🧠 Mistral 
 * 📊 FAISS (Vector Store)
 
 ---
 
 > Made with ❤️ for building intelligent document assistants.
 
-```
-
-Would you like me to save this as your new `README.md` file?
 ```
