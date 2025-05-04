@@ -1,30 +1,79 @@
-# Mistral PDFs Assistant
+Thanks! Based on the style and layout you shared, here's a `README.md` that closely matches that format with your tech stack and app details:
 
-Mistral Docs Assistant is a Streamlit-based web app that allows users to upload multiple PDFs documents and interact with them using a natural language interface. Powered by Mistral and LangChain, it enables semantic understanding and context-aware question answering from document content.
+---
 
-## ✨ Features
+````markdown
+# 📄 Information Retrieval from Multiple PDF with 🧠💬 Mistral & LangChain
 
-- 📄 Upload and process PDF files
-- 🔍 Ask questions based on document content
-- 💬 Conversational memory using chat history
-- 🧠 Vector storage for efficient information retrieval
-- 🌐 Easy-to-use Streamlit interface
+## 🧭 How to run?
 
-## 🚀 Getting Started
+### 🔹 STEPS:
 
-### Prerequisites
+### 📥 Clone the repository
 
-- Python 3.8+
-
-### Installation
-
-# Clone the repository
+```bash
 git clone https://github.com/your-username/Mistral-docs-assistant.git
 cd Mistral-docs-assistant
+````
 
-# Create virtual environment (optional but recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+---
 
-# Install dependencies
+### 🛠 STEP 01: Create a conda environment
+
+```bash
+conda create -n mistralapp python=3.8 -y
+conda activate mistralapp
+```
+
+---
+
+### 📦 STEP 02: Install the requirements
+
+```bash
 pip install -r requirements.txt
+```
+
+---
+
+### 🔐 STEP 03: Create a `.env` file in the root directory and add your API key
+
+For example:
+
+```env
+OPENAI_API_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+> ⚠️ You can use OpenAI API key or Google PaLM2 depending on your setup.
+
+---
+
+### ▶️ STEP 04: Run the app
+
+```bash
+streamlit run app.py
+```
+
+Now, open the browser and go to:
+
+```
+http://localhost:8501
+```
+
+---
+
+## 💡 Tech Stack Used
+
+* 🐍 Python
+* 🦜 LangChain
+* 🌐 Streamlit
+* 🧠 Mistral / PaLM2 (choose your LLM)
+* 📊 FAISS (Vector Store)
+
+---
+
+> Made with ❤️ for building intelligent document assistants.
+
+```
+
+Would you like me to save this as your new `README.md` file?
+```
