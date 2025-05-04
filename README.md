@@ -1,8 +1,3 @@
-Thanks! Based on the style and layout you shared, here's a `README.md` that closely matches that format with your tech stack and app details:
-
----
-
-````markdown
 # 📄 Information Retrieval from Multiple PDF with 🧠💬 Mistral & LangChain
 
 ## 🧭 How to run?
@@ -40,10 +35,8 @@ pip install -r requirements.txt
 For example:
 
 ```env
-OPENAI_API_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+MISTRAL_API_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
-
-> ⚠️ You can use OpenAI API key or Google PaLM2 depending on your setup.
 
 ---
 
