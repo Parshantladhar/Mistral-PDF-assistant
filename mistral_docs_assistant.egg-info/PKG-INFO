@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: mistral-docs-assistant
+Version: 0.1
+Summary: An information retrieval assistant using Mistral and LangChain.
+Author: Parshant Kumar
+License-File: LICENSE
+Requires-Dist: langchain
+Requires-Dist: transformers
+Requires-Dist: faiss-cpu
+Requires-Dist: mistralai
+Requires-Dist: streamlit
+Requires-Dist: python-dotenv
+Requires-Dist: PyPDF2
