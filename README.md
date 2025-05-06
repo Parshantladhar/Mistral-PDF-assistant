@@ -7,8 +7,8 @@
 ### 📥 Clone the repository
 
 ```bash
-git clone https://github.com/your-username/Mistral-docs-assistant.git
-cd Mistral-docs-assistant
+git clone https://github.com/your-username/MistralRAG-Smart_Document_Q_and_A_Engine.git
+cd MistralRAG-Smart_Document_Q_and_A_Engine
 ````
 
 ---
