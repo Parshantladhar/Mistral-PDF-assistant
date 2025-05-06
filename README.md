@@ -1,5 +1,8 @@
 # 📄 Information Retrieval from Multiple PDF with 🧠💬 Mistral & LangChain
 
+## Description:
+A powerful Retrieval-Augmented Generation (RAG) application that lets you chat with your documents. Upload PDFs, Word files, or text documents and ask questions in natural language to receive accurate, context-aware answers powered by Mistral AI and LangChain. Perfect for researchers, students, and professionals who need quick insights from their document collections.
+
 ## 🧭 How to run?
 
 ### 🔹 STEPS:
