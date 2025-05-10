@@ -10,13 +10,13 @@ A powerful Retrieval-Augmented Generation (RAG) application that lets you chat w
 ### 📥 Clone the repository
 
 ```bash
-git clone https://github.com/your-username/MistralRAG-Smart_Document_Q_and_A_Engine.git
+git clone https://github.com/Parshantladhar/MistralRAG-Smart_Document_Q_and_A_Engine.git
 cd MistralRAG-Smart_Document_Q_and_A_Engine
 ````
 
 ---
 
-### 🛠 STEP 01: Create a conda environment
+### 🛠 STEP 01: Create a conda environment(Optional)
 
 ```bash
 conda create -n mistralapp python=3.8 -y
