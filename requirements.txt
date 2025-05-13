@@ -1,7 +1,10 @@
 python-dotenv
 mistralai
 langchain
+langchain-community
+langchain-mistralai
 PyPDF2
+docx2txt
 faiss-cpu
 streamlit
 -e .
