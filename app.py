@@ -10,7 +10,6 @@ from src.helper import (
     DEFAULT_CONFIG
 )
 from src.document_processor import analyze_text, extract_keywords
-from src.model_providers import get_model_list
 
 # App configuration
 APP_TITLE = "Mistral Docs Assistant"
