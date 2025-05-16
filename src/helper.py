@@ -3,14 +3,15 @@ import logging
 from typing import List, Union, Dict, Any
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_mistralai.embeddings import MistralAIEmbeddings
 from langchain.vectorstores import FAISS
-from langchain_mistralai import ChatMistralAI
 from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from dotenv import load_dotenv
 import io
 import docx2txt  
+
+# Import from model_providers module
+from .model_providers import ModelManager, model_manager
 
 # Configure logging
 logging.basicConfig(
@@ -110,9 +111,13 @@ def get_text_chunks(text: str, config: Dict = None) -> List[str]:
         raise Exception(f"Failed to process text chunks: {str(e)}")
 
 def get_vector_store(text_chunks: List[str]) -> FAISS:
-    """Create a vector store using Mistral embeddings."""
+    """Create a vector store using embeddings from the model provider."""
     try:
-        embeddings = MistralAIEmbeddings(api_key=MISTRAL_API_KEY)
+        # Get embeddings using model_provider
+        model_name = DEFAULT_CONFIG["model_name"]
+        provider = model_manager.get_provider(model_name)
+        embeddings = provider.get_embeddings()
+        
         vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
         logger.info("Vector store created successfully")
         return vector_store
@@ -121,17 +126,19 @@ def get_vector_store(text_chunks: List[str]) -> FAISS:
         raise Exception(f"Failed to create vector store: {str(e)}")
 
 def get_conversational_chain(vector_store: FAISS, config: Dict = None) -> ConversationalRetrievalChain:
-    """Initialize the conversational retrieval chain using Mistral chat model."""
+    """Initialize the conversational retrieval chain using the model provider."""
     if config is None:
         config = DEFAULT_CONFIG
         
     try:
-        llm = ChatMistralAI(
-            model=config.get("model_name", DEFAULT_CONFIG["model_name"]), 
-            api_key=MISTRAL_API_KEY,
-            temperature=config.get("temperature", DEFAULT_CONFIG["temperature"])
-        )
-
+        # Get LLM using model_provider
+        model_name = config.get("model_name", DEFAULT_CONFIG["model_name"])
+        llm, actual_model = model_manager.get_llm_with_fallback(model_name)
+        
+        # Log which model is actually being used (in case of fallback)
+        if actual_model != model_name:
+            logger.info(f"Using fallback model: {actual_model}")
+        
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
         conversation_chain = ConversationalRetrievalChain.from_llm(
