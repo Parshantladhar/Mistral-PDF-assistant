@@ -9,6 +9,8 @@ from src.helper import (
     get_conversational_chain,
     DEFAULT_CONFIG
 )
+from src.document_processor import analyze_text, extract_keywords
+from src.model_providers import get_model_list
 
 # App configuration
 APP_TITLE = "Mistral Docs Assistant"
@@ -20,19 +22,21 @@ def init_session_state():
     session_vars = [
         "conversation", "chat_history", "document_text", 
         "processing_done", "uploaded_files", "document_count", 
-        "config"
+        "config", "document_analysis", "error_log"
     ]
     
     for var in session_vars:
         if var not in st.session_state:
             if var == "config":
                 st.session_state[var] = DEFAULT_CONFIG.copy()
-            elif var in ["chat_history", "uploaded_files"]:
+            elif var in ["chat_history", "uploaded_files", "error_log"]:
                 st.session_state[var] = []
             elif var == "document_count":
                 st.session_state[var] = 0
             elif var == "processing_done":
                 st.session_state[var] = False
+            elif var == "document_analysis":
+                st.session_state[var] = {}
             else:
                 st.session_state[var] = None
 
@@ -61,6 +65,21 @@ def process_documents(files):
             document_text = get_document_text(files)
             st.session_state.document_text = document_text
             
+            # Perform document analysis
+            document_analysis = {}
+            for filename, text in document_text.items():
+                try:
+                    text_analysis = analyze_text(text)
+                    keywords = extract_keywords(text, top_n=7)
+                    document_analysis[filename] = {
+                        "text_analysis": text_analysis,
+                        "keywords": keywords
+                    }
+                except Exception as e:
+                    st.session_state.error_log.append(f"Error analyzing {filename}: {str(e)}")
+            
+            st.session_state.document_analysis = document_analysis
+            
             # Combine all document texts
             all_text = " ".join(text for text in document_text.values())
             
@@ -76,15 +95,9 @@ def process_documents(files):
             st.session_state.processing_done = True
             st.success(f"✅ Successfully processed {len(files)} documents!")
             
-            # Show document details
-            with st.expander("Document Details"):
-                for filename, text in document_text.items():
-                    st.write(f"**{filename}**")
-                    st.write(f"Text length: {len(text)} characters")
-                    st.write("---")
-            
         except Exception as e:
             st.error(f"Error processing documents: {str(e)}")
+            st.session_state.error_log.append(f"Processing error: {str(e)}")
             st.session_state.processing_done = False
 
 def handle_user_input(user_question):
@@ -93,19 +106,58 @@ def handle_user_input(user_question):
         st.warning("⚠️ Please upload and process documents first.")
         return
     
-    # Display user question
-    st.markdown(f"**You:** {user_question}")
+    # Store user question in chat history if not already there
+    if not st.session_state.chat_history or st.session_state.chat_history[-1].content != user_question:
+        st.session_state.chat_history.append(type('obj', (object,), {'content': user_question}))
     
     # Get response
     with st.spinner("Thinking..."):
         try:
             response = st.session_state.conversation({'question': user_question})
             st.session_state.chat_history = response['chat_history']
-            
-            # Display assistant response
-            st.markdown(f"**Assistant:** {response['chat_history'][-1].content}")
         except Exception as e:
-            st.error(f"Error generating response: {str(e)}")
+            error_msg = f"Error generating response: {str(e)}"
+            st.error(error_msg)
+            st.session_state.error_log.append(error_msg)
+            
+            # Add fallback response in case of error
+            st.session_state.chat_history.append(
+                type('obj', (object,), {'content': "I'm sorry, I encountered an error processing your question. Please try rephrasing or ask another question."})
+            )
+
+def display_document_analysis():
+    """Display document analysis in an expander."""
+    with st.expander("📊 Document Analysis", expanded=False):
+        if not st.session_state.document_analysis:
+            st.info("No document analysis available. Please process documents first.")
+            return
+            
+        for filename, analysis in st.session_state.document_analysis.items():
+            st.subheader(f"📄 {filename}")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.write("**Basic Statistics:**")
+                text_analysis = analysis.get("text_analysis", {})
+                st.write(f"- Word count: {text_analysis.get('word_count', 'N/A')}")
+                st.write(f"- Sentence count: {text_analysis.get('sentence_count', 'N/A')}")
+                st.write(f"- Avg. sentence length: {text_analysis.get('avg_sentence_length', 'N/A')} words")
+                st.write(f"- Est. reading time: {text_analysis.get('reading_time_minutes', 'N/A')} min")
+                
+            with col2:
+                st.write("**Key Topics:**")
+                keywords = analysis.get("keywords", [])
+                st.write(", ".join(keywords))
+                
+                # Show word frequency if available
+                if "common_words" in text_analysis:
+                    st.write("**Most Common Words:**")
+                    common_words = text_analysis["common_words"][:5]  # Top 5 words
+                    for word, count in common_words:
+                        st.write(f"- {word}: {count}")
+            
+            st.markdown("---")
 
 def main():
     """Main application function."""
@@ -168,30 +220,35 @@ def main():
                 key="chunk_overlap_slider"
             )
             
+            # Get available models from model provider
+            available_models = get_model_list()
+            model_options = [model["name"] for model in available_models]
+            default_index = model_options.index("mistral-medium") if "mistral-medium" in model_options else 0
+            
             st.selectbox(
                 "Model Name",
-                options=["mistral-small", "mistral-medium"],
-                index=1,  # Default to medium
-                help="Mistral model to use",
+                options=model_options,
+                index=default_index,
+                help="Model to use for question answering",
                 key="model_name_select"
             )
             
-            # st.slider(
-            #     "Temperature", 
-            #     min_value=0.0, 
-            #     max_value=1.0, 
-            #     value=st.session_state.config["temperature"],
-            #     step=0.1,
-            #     help="Controls randomness in responses",
-            #     key="temperature_slider"
-            # )
+            st.slider(
+                "Temperature", 
+                min_value=0.0, 
+                max_value=1.0, 
+                value=st.session_state.config.get("temperature", 0.1),
+                step=0.1,
+                help="Controls randomness in responses (higher = more creative)",
+                key="temperature_slider"
+            )
             
             # Update config when any setting changes
             st.session_state.config = {
                 "chunk_size": st.session_state.chunk_size_slider,
                 "chunk_overlap": st.session_state.chunk_overlap_slider,
                 "model_name": st.session_state.model_name_select,
-                "temperature": 0.10,#st.session_state.temperature_slider,
+                "temperature": st.session_state.temperature_slider,
             }
         
         # Clear conversation button
@@ -210,17 +267,44 @@ def main():
     # Main area
     # Display chat interface only if documents are processed
     if st.session_state.processing_done:
-        # Chat input area
-        st.markdown("### Ask questions about your documents")
-        user_question = st.text_input("Your question:", key="user_input")
+        tabs = st.tabs(["Chat", "Document Analysis", "Debug Info"])
         
-        if user_question:
-            handle_user_input(user_question)
+        with tabs[0]:  # Chat tab
+            # Chat input area
+            st.markdown("### Ask questions about your documents")
+            user_question = st.text_input("Your question:", key="user_input")
             
-        # Display chat history
-        if st.session_state.chat_history and len(st.session_state.chat_history) > 0:
-            st.markdown("### Conversation History")
-            display_chat_history()
+            if user_question:
+                handle_user_input(user_question)
+                
+            # Display chat history
+            if st.session_state.chat_history and len(st.session_state.chat_history) > 0:
+                st.markdown("### Conversation History")
+                display_chat_history()
+        
+        with tabs[1]:  # Document Analysis tab
+            st.markdown("### Document Analysis")
+            display_document_analysis()
+            
+            # Display document details
+            with st.expander("Document Details"):
+                for filename, text in st.session_state.document_text.items():
+                    st.write(f"**{filename}**")
+                    st.write(f"Text length: {len(text)} characters")
+                    if len(text) > 500:
+                        st.text_area(f"Preview of {filename}", text[:500] + "...", height=150)
+                    else:
+                        st.text_area(f"Content of {filename}", text, height=150)
+                    st.write("---")
+        
+        with tabs[2]:  # Debug Info tab
+            st.markdown("### Debug Information")
+            st.json(st.session_state.config)
+            
+            if st.session_state.error_log:
+                st.markdown("#### Error Log")
+                for i, error in enumerate(st.session_state.error_log):
+                    st.error(f"{i+1}. {error}")
     else:
         # Display instructions when no documents are processed
         st.info("👈 Please upload your documents using the sidebar and click 'Process Documents' to begin")
