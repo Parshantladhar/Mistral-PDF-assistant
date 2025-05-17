@@ -50,11 +50,7 @@ class DocumentProcessor:
     }
     
     def __init__(self):
-        # Ensure spaCy model is available
-        if not is_package("en_core_web_sm"):
-            import spacy.cli
-            spacy.cli.download("en_core_web_sm")
-
+    # Load the spaCy language model (must be preinstalled via requirements.txt)
         self.nlp = spacy.load("en_core_web_sm")
 
         self.processors: Dict[str, callable] = {
@@ -62,6 +58,7 @@ class DocumentProcessor:
             '.txt': self._process_txt,
             '.docx': self._process_docx,
         }
+
     
     def is_supported(self, filename: str) -> bool:
         """Check if the file type is supported."""
