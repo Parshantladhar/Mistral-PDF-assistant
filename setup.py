@@ -6,12 +6,14 @@ setup(
     packages=find_packages(),
     install_requires=[
         "langchain",
-        "transformers",
+        "langchain-community",
+        "langchain-mistralai"
         "faiss-cpu",
         "mistralai",
         "streamlit",
         "python-dotenv",
         "PyPDF2",
+        "doc2txt",
         
     ],
     author="Parshant Kumar",
