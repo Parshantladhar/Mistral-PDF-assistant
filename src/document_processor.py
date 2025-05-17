@@ -63,12 +63,14 @@ class DocumentProcessor:
                         filename: str) -> Tuple[str, DocumentMetadata]:
         """Process a document and return text and metadata."""
         if not self.is_supported(filename):
+            logger.error(f"Unsupported file type: {filename}")
             raise ValueError(f"Unsupported file type: {filename}")
         
         ext: str = os.path.splitext(filename)[1].lower()
         processor: callable = self.processors.get(ext)
         
         if not processor:
+            logger.error(f"No processor found for {ext}")
             raise ValueError(f"No processor found for {ext}")
         
         # Get file size
@@ -76,8 +78,29 @@ class DocumentProcessor:
         file_size: int = file_obj.tell()
         file_obj.seek(0)
         
+        if file_size == 0:
+            logger.warning(f"Empty file: {filename}")
+            text = "ERROR: Empty file"
+            metadata = DocumentMetadata(
+                filename=filename,
+                file_type=self.SUPPORTED_EXTENSIONS.get(ext, 'unknown'),
+                file_size=0,
+                char_count=0,
+                word_count=0,
+                page_count=1,
+                processed_at=datetime.now(),
+                document_hash="",
+                language=None
+            )
+            return text, metadata
+        
         # Process the document
-        text, page_count = processor(file_obj)
+        try:
+            text, page_count = processor(file_obj)
+        except Exception as e:
+            logger.error(f"Failed to process {filename}: {str(e)}")
+            text = f"ERROR: Failed to extract text - {str(e)}"
+            page_count = 1
         
         # Calculate document hash
         file_obj.seek(0)
@@ -85,10 +108,15 @@ class DocumentProcessor:
         file_obj.seek(0)
         
         # Calculate stats
-        word_count: int = len(re.findall(r'\b\w+\b', text))
+        word_count: int = len(re.findall(r'\b\w+\b', text)) if not text.startswith("ERROR:") else 0
         
         # Detect language
-        language: Optional[str] = detect(text) if text.strip() else None
+        language: Optional[str] = None
+        if text and not text.startswith("ERROR:") and text.strip():
+            try:
+                language = detect(text)
+            except Exception as e:
+                logger.warning(f"Language detection failed for {filename}: {str(e)}")
         
         # Create metadata
         metadata = DocumentMetadata(
@@ -116,7 +144,14 @@ class DocumentProcessor:
                 extracted_text = page.extract_text()
                 if extracted_text:
                     text += extracted_text + "\n\n"
-                
+                else:
+                    logger.warning("Empty text extracted from PDF page")
+            
+            if not text.strip():
+                logger.warning("No text extracted from PDF")
+                text = "ERROR: No text could be extracted from the PDF"
+                page_count = 1
+            
             return text, page_count
         except Exception as e:
             logger.error(f"Error processing PDF: {str(e)}")
@@ -125,7 +160,10 @@ class DocumentProcessor:
     def _process_txt(self, file_obj: io.BytesIO) -> Tuple[str, int]:
         """Extract text from TXT document."""
         try:
-            text: str = file_obj.read().decode('utf-8')
+            text: str = file_obj.read().decode('utf-8', errors='ignore')
+            if not text.strip():
+                logger.warning("No text extracted from TXT")
+                text = "ERROR: No text could be extracted from the TXT file"
             # Count pages by assuming a page is ~3000 characters
             page_count: int = max(1, len(text) // 3000)
             return text, page_count
@@ -137,6 +175,9 @@ class DocumentProcessor:
         """Extract text from DOCX document."""
         try:
             text: str = docx2txt.process(file_obj)
+            if not text.strip():
+                logger.warning("No text extracted from DOCX")
+                text = "ERROR: No text could be extracted from the DOCX file"
             # docx2txt doesn't provide page count, so we estimate
             page_count: int = max(1, len(text) // 3000)
             return text, page_count
@@ -146,6 +187,16 @@ class DocumentProcessor:
 
 def analyze_text(text: str) -> Dict[str, Any]:
     """Analyze text and return statistics."""
+    if not text or text.startswith("ERROR:"):
+        return {
+            "word_count": 0,
+            "sentence_count": 0,
+            "avg_sentence_length": 0,
+            "common_words": [],
+            "reading_time_minutes": 0,
+            "char_count": len(text)
+        }
+    
     words: List[str] = re.findall(r'\b\w+\b', text.lower())
     sentences: List[str] = re.split(r'[.!?]+', text)
     
@@ -175,6 +226,10 @@ def analyze_text(text: str) -> Dict[str, Any]:
 
 def extract_keywords(text: str, top_n: int = 5) -> List[str]:
     """Extract potential keywords from text using regex and frequency analysis."""
+    if not text or text.startswith("ERROR:"):
+        logger.warning("No valid text for keyword extraction")
+        return []
+    
     try:
         words = re.findall(r'\b[a-zA-Z]{3,15}\b', text.lower())
         stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 

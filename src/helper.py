@@ -70,14 +70,17 @@ def get_text_chunks(text: str, config: Dict[str, Any] = None) -> List[str]:
         config = DEFAULT_CONFIG
         
     try:
-        if not text.strip():
-            logger.warning("Empty text provided for chunking")
+        if not text or not text.strip():
+            logger.warning("Empty or whitespace-only text provided for chunking")
             return []
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=config.get("chunk_size", DEFAULT_CONFIG["chunk_size"]),
             chunk_overlap=config.get("chunk_overlap", DEFAULT_CONFIG["chunk_overlap"])
         )
-        chunks: List[str] = text_splitter.split_text(text)
+        chunks: List[str] = text_splitter.split_text(text.strip())
+        if not chunks:
+            logger.warning("Text splitting resulted in no chunks")
+            return []
         logger.info(f"Text successfully split into {len(chunks)} chunks")
         return chunks
     except Exception as e:
@@ -91,7 +94,12 @@ def get_vector_store(text_chunks: List[str]) -> FAISS:
         logger.error("Empty text chunks provided for vector store creation")
         return None
     try:
+        logger.info(f"Creating vector store with {len(text_chunks)} chunks")
+        if not MISTRAL_API_KEY:
+            logger.error("MISTRAL_API_KEY is not set")
+            raise ValueError("Missing Mistral API key")
         embeddings = MistralAIEmbeddings(api_key=MISTRAL_API_KEY)
+        logger.info("Initialized MistralAIEmbeddings")
         vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
         logger.info("Created vector store in memory")
         return vector_store

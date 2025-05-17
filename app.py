@@ -1,7 +1,7 @@
 import streamlit as st
 import logging
 from typing import List, Dict, Any, Optional
-from src.helper import get_document_text, get_text_chunks, get_vector_store, get_conversational_chain, DEFAULT_CONFIG
+from src.helper import get_document_text, get_text_chunks, get_vector_store, DEFAULT_CONFIG
 from src.config import load_config, save_config, ModelName
 from src.document_processor import analyze_text, extract_keywords, DocumentProcessor
 import streamlit.components.v1 as components
@@ -107,22 +107,25 @@ def process_documents(files: List[st.runtime.uploaded_file_manager.UploadedFile]
             # Extract text from documents in parallel
             document_text: Dict[str, str] = get_document_text(files)
             st.session_state.document_text = document_text
+            logger.info(f"Extracted text from {len(document_text)} documents")
             
             # Update progress bar based on completed documents
             progress_bar.progress(0.5)
             
             # Combine all document texts
             all_text: str = " ".join(text for text in document_text.values() if not text.startswith("ERROR:") and text.strip())
+            logger.info(f"Combined text length: {len(all_text)} characters")
             
             # Check if any valid text was extracted
             if not all_text.strip():
-                st.error("No valid text extracted from the uploaded files. Please check the files and try again.")
+                st.error("No valid text extracted from the uploaded files. Please check if the files are readable and not empty or encrypted.")
                 logger.error("No valid text extracted from uploaded files")
                 st.session_state.processing_done = False
                 return
             
             # Process text into chunks
             text_chunks: List[str] = get_text_chunks(all_text, st.session_state.config)
+            logger.info(f"Generated {len(text_chunks)} text chunks")
             if not text_chunks:
                 st.error("Failed to create text chunks. The extracted text may be too short or invalid.")
                 logger.error("Text chunking resulted in empty list")
@@ -132,7 +135,7 @@ def process_documents(files: List[st.runtime.uploaded_file_manager.UploadedFile]
             # Create vector store
             vector_store = get_vector_store(text_chunks)
             if vector_store is None:
-                st.error("Failed to create vector store. Please try again with different files.")
+                st.error("Failed to create vector store. This may be due to an invalid API key, network issues, or incompatible file content. Please check your API key and try different files.")
                 logger.error("Vector store creation returned None")
                 st.session_state.processing_done = False
                 return
