@@ -9,22 +9,14 @@ from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from langdetect import detect
+from collections import Counter
+import re
 
 # For PDF processing
 from PyPDF2 import PdfReader
 
 # For DOCX processing
 import docx2txt
-
-# For image processing
-from PIL import Image
-import pytesseract
-
-# For text analysis
-import re
-from collections import Counter
-import spacy
 
 # Configure logging
 logger: logging.Logger = logging.getLogger(__name__)
@@ -49,9 +41,6 @@ class DocumentProcessor:
         '.pdf': 'application/pdf',
         '.txt': 'text/plain',
         '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
     }
     
     def __init__(self):
@@ -59,11 +48,7 @@ class DocumentProcessor:
             '.pdf': self._process_pdf,
             '.txt': self._process_txt,
             '.docx': self._process_docx,
-            '.png': self._process_image,
-            '.jpg': self._process_image,
-            '.jpeg': self._process_image,
         }
-        self.nlp = spacy.load("en_core_web_sm")
     
     def is_supported(self, filename: str) -> bool:
         """Check if the file type is supported."""
@@ -99,10 +84,7 @@ class DocumentProcessor:
         # Calculate stats
         word_count: int = len(re.findall(r'\b\w+\b', text))
         
-        # Detect language
-        language: Optional[str] = detect(text) if text.strip() else None
-        
-        # Create metadata
+        # Create metadata (language detection removed)
         metadata = DocumentMetadata(
             filename=filename,
             file_type=self.SUPPORTED_EXTENSIONS.get(ext, 'unknown'),
@@ -112,7 +94,7 @@ class DocumentProcessor:
             page_count=page_count,
             processed_at=datetime.now(),
             document_hash=file_hash,
-            language=language
+            language='en'  # Default to English since we removed language detection
         )
         
         return text, metadata
@@ -155,24 +137,6 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Error processing DOCX: {str(e)}")
             raise
-    
-    def _process_image(self, file_obj: io.BytesIO) -> Tuple[str, int]:
-        """Extract text from image using OCR."""
-        try:
-            # Open image with Pillow
-            image = Image.open(file_obj)
-            # Perform OCR
-            text: str = pytesseract.image_to_string(image, lang='eng')
-            # Check if text is empty or only whitespace
-            if not text.strip():
-                logger.warning(f"No text extracted from image: {file_obj}")
-                text = "ERROR: No text extracted from image"
-            # Assume 1 page for images
-            page_count: int = 1
-            return text, page_count
-        except Exception as e:
-            logger.error(f"Error processing image: {str(e)}")
-            return f"ERROR: Failed to process image: {str(e)}", 1
 
 def analyze_text(text: str) -> Dict[str, Any]:
     """Analyze text and return statistics."""
@@ -204,19 +168,31 @@ def analyze_text(text: str) -> Dict[str, Any]:
     }
 
 def extract_keywords(text: str, top_n: int = 5) -> List[str]:
-    """Extract potential keywords from text using spaCy."""
+    """Extract potential keywords from text using simple frequency analysis."""
+    # Simple implementation without spaCy
     try:
-        nlp = spacy.load("en_core_web_sm")
-        doc = nlp(text)
-        keywords = [token.text.lower() for token in doc if token.pos_ in ["NOUN", "PROPN"] and len(token.text) > 2]
-        word_freq = Counter(keywords)
+        # Tokenize and get lowercase words
+        words = re.findall(r'\b[a-zA-Z]{3,15}\b', text.lower())
+        
+        # Common stop words to filter out
+        stop_words = {
+            'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 
+            'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by',
+            'this', 'that', 'these', 'those', 'it', 'its', 'they', 'them', 'their',
+            'what', 'which', 'who', 'whom', 'whose', 'where', 'when', 'why', 'how',
+            'all', 'any', 'both', 'each', 'few', 'more', 'most', 'some', 'such',
+            'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
+            'can', 'will', 'just', 'should', 'now'
+        }
+        
+        # Filter out stop words
+        filtered_words = [word for word in words if word not in stop_words]
+        
+        # Count word frequencies
+        word_freq = Counter(filtered_words)
+        
+        # Return most common words
         return [word for word, _ in word_freq.most_common(top_n)]
     except Exception as e:
         logger.error(f"Error extracting keywords: {str(e)}")
-        # Fallback to simple method
-        words = re.findall(r'\b[a-zA-Z]{3,15}\b', text.lower())
-        stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 
-                     'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by'}
-        filtered_words = [word for word in words if word not in stop_words]
-        word_freq = Counter(filtered_words)
-        return [word for word, _ in word_freq.most_common(top_n)]
+        return []  # Return empty list on error

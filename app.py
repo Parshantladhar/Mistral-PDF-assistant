@@ -194,11 +194,11 @@ def main() -> None:
         st.title("📁 Document Upload")
         st.markdown("Upload your documents and configure the assistant")
         
-        # File upload
+        # File upload - UPDATED: Removed image file types
         uploaded_files: Optional[List[st.runtime.uploaded_file_manager.UploadedFile]] = st.file_uploader(
             "Upload documents",
             accept_multiple_files=True, 
-            type=["pdf", "txt", "docx"]
+            type=["pdf", "txt", "docx"]  # Removed image types
         )
         
         # Process button
@@ -333,4 +333,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -1,9 +1,2 @@
 [server]
 fileWatcherType = "none"
-
-[global]
-showWarningOnDirectExecution = false
-
-[server]
-enableCORS = false
-enableXsrfProtection = false
