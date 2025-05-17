@@ -5,19 +5,25 @@ import os
 import json
 from typing import Dict, Any, Optional
 from pathlib import Path
+from enum import Enum
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+class ModelName(str, Enum):
+    """Enum for supported Mistral model names."""
+    SMALL = "mistral-small"
+    MEDIUM = "mistral-medium"
+
 # Base default configuration
-DEFAULT_CONFIG = {
+DEFAULT_CONFIG: Dict[str, Any] = {
     # Document processing
     "chunk_size": 1000,
     "chunk_overlap": 20,
     
     # Mistral AI settings
-    "model_name": "mistral-medium",
+    "model_name": ModelName.MEDIUM.value,
     "temperature": 0.5,
     "max_tokens": 1024,
     
@@ -32,24 +38,23 @@ DEFAULT_CONFIG = {
 
 def get_config_path() -> Path:
     """Return the path to the configuration file."""
-    # Use a dedicated config directory in the user's home directory
-    config_dir = Path.home() / ".mistral_docs_assistant"
+    config_dir: Path = Path.home() / ".mistral_docs_assistant"
     config_dir.mkdir(exist_ok=True)
     return config_dir / "config.json"
 
 def load_config() -> Dict[str, Any]:
     """Load configuration from file or return default."""
-    config_path = get_config_path()
+    config_path: Path = get_config_path()
     
     if config_path.exists():
         try:
             with open(config_path, "r") as f:
-                user_config = json.load(f)
+                user_config: Dict[str, Any] = json.load(f)
             
             # Merge with defaults to ensure all keys exist
-            config = DEFAULT_CONFIG.copy()
+            config: Dict[str, Any] = DEFAULT_CONFIG.copy()
             config.update(user_config)
-            return config
+            return validate_config(config)
         except Exception as e:
             print(f"Error loading config: {e}. Using defaults.")
             return DEFAULT_CONFIG
@@ -58,7 +63,7 @@ def load_config() -> Dict[str, Any]:
 
 def save_config(config: Dict[str, Any]) -> bool:
     """Save configuration to file."""
-    config_path = get_config_path()
+    config_path: Path = get_config_path()
     
     try:
         with open(config_path, "w") as f:
@@ -70,44 +75,44 @@ def save_config(config: Dict[str, Any]) -> bool:
 
 def get_api_key() -> Optional[str]:
     """Get Mistral API key from environment or config."""
-    # First try environment variable
-    api_key = os.getenv("MISTRAL_API_KEY")
+    api_key: Optional[str] = os.getenv("MISTRAL_API_KEY")
     
-    # If not in environment, try config file
     if not api_key:
-        config = load_config()
+        config: Dict[str, Any] = load_config()
         api_key = config.get("mistral_api_key")
     
     return api_key
 
 def validate_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """Validate configuration values."""
-    validated = DEFAULT_CONFIG.copy()
+    validated: Dict[str, Any] = DEFAULT_CONFIG.copy()
     
     # Validate and sanitize values
     if "chunk_size" in config:
-        chunk_size = config["chunk_size"]
-        validated["chunk_size"] = max(100, min(5000, int(chunk_size)))
+        chunk_size: int = int(config["chunk_size"])
+        validated["chunk_size"] = max(100, min(5000, chunk_size))
+        if chunk_size > config.get("max_tokens", validated["max_tokens"]):
+            raise ValueError("chunk_size cannot exceed max_tokens")
     
     if "chunk_overlap" in config:
-        chunk_overlap = config["chunk_overlap"]
-        validated["chunk_overlap"] = max(0, min(500, int(chunk_overlap)))
+        chunk_overlap: int = int(config["chunk_overlap"])
+        validated["chunk_overlap"] = max(0, min(500, chunk_overlap))
     
     if "model_name" in config:
-        model_name = config["model_name"]
-        valid_models = ["mistral-small", "mistral-medium"]
+        model_name: str = config["model_name"]
+        valid_models: List[str] = [ModelName.SMALL.value, ModelName.MEDIUM.value]
         validated["model_name"] = model_name if model_name in valid_models else DEFAULT_CONFIG["model_name"]
     
     if "temperature" in config:
-        temperature = config["temperature"]
-        validated["temperature"] = max(0.0, min(1.0, float(temperature)))
+        temperature: float = float(config["temperature"])
+        validated["temperature"] = max(0.0, min(1.0, temperature))
     
     if "max_tokens" in config:
-        max_tokens = config["max_tokens"]
-        validated["max_tokens"] = max(1, min(4096, int(max_tokens)))
+        max_tokens: int = int(config["max_tokens"])
+        validated["max_tokens"] = max(1, min(4096, max_tokens))
     
     if "top_k" in config:
-        top_k = config["top_k"]
-        validated["top_k"] = max(1, min(20, int(top_k)))
+        top_k: int = int(config["top_k"])
+        validated["top_k"] = max(1, min(20, top_k))
     
     return validated

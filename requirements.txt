@@ -7,4 +7,7 @@ PyPDF2
 docx2txt
 faiss-cpu
 streamlit
+spacy
+en-core-web-sm
+langdetect
 -e .

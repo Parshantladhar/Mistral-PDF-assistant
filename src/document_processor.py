@@ -5,10 +5,11 @@ import os
 import io
 import logging
 import hashlib
-from typing import Dict, List, Tuple, Optional, Any, Union
+from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from langdetect import detect
 
 # For PDF processing
 from PyPDF2 import PdfReader
@@ -19,9 +20,10 @@ import docx2txt
 # For text analysis
 import re
 from collections import Counter
+import spacy
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class DocumentMetadata:
@@ -39,22 +41,23 @@ class DocumentMetadata:
 class DocumentProcessor:
     """Process different document types and extract text."""
     
-    SUPPORTED_EXTENSIONS = {
+    SUPPORTED_EXTENSIONS: Dict[str, str] = {
         '.pdf': 'application/pdf',
         '.txt': 'text/plain',
         '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     }
     
     def __init__(self):
-        self.processors = {
+        self.processors: Dict[str, callable] = {
             '.pdf': self._process_pdf,
             '.txt': self._process_txt,
             '.docx': self._process_docx,
         }
+        self.nlp = spacy.load("en_core_web_sm")
     
     def is_supported(self, filename: str) -> bool:
         """Check if the file type is supported."""
-        ext = os.path.splitext(filename)[1].lower()
+        ext: str = os.path.splitext(filename)[1].lower()
         return ext in self.SUPPORTED_EXTENSIONS
     
     def process_document(self, 
@@ -64,15 +67,15 @@ class DocumentProcessor:
         if not self.is_supported(filename):
             raise ValueError(f"Unsupported file type: {filename}")
         
-        ext = os.path.splitext(filename)[1].lower()
-        processor = self.processors.get(ext)
+        ext: str = os.path.splitext(filename)[1].lower()
+        processor: callable = self.processors.get(ext)
         
         if not processor:
             raise ValueError(f"No processor found for {ext}")
         
         # Get file size
         file_obj.seek(0, os.SEEK_END)
-        file_size = file_obj.tell()
+        file_size: int = file_obj.tell()
         file_obj.seek(0)
         
         # Process the document
@@ -80,11 +83,14 @@ class DocumentProcessor:
         
         # Calculate document hash
         file_obj.seek(0)
-        file_hash = hashlib.md5(file_obj.read()).hexdigest()
+        file_hash: str = hashlib.md5(file_obj.read()).hexdigest()
         file_obj.seek(0)
         
         # Calculate stats
-        word_count = len(re.findall(r'\b\w+\b', text))
+        word_count: int = len(re.findall(r'\b\w+\b', text))
+        
+        # Detect language
+        language: Optional[str] = detect(text) if text.strip() else None
         
         # Create metadata
         metadata = DocumentMetadata(
@@ -95,7 +101,8 @@ class DocumentProcessor:
             word_count=word_count,
             page_count=page_count,
             processed_at=datetime.now(),
-            document_hash=file_hash
+            document_hash=file_hash,
+            language=language
         )
         
         return text, metadata
@@ -104,11 +111,13 @@ class DocumentProcessor:
         """Extract text from PDF document."""
         try:
             pdf_reader = PdfReader(file_obj)
-            page_count = len(pdf_reader.pages)
+            page_count: int = len(pdf_reader.pages)
             
-            text = ""
+            text: str = ""
             for page in pdf_reader.pages:
-                text += page.extract_text() + "\n\n"
+                extracted_text = page.extract_text()
+                if extracted_text:
+                    text += extracted_text + "\n\n"
                 
             return text, page_count
         except Exception as e:
@@ -118,9 +127,9 @@ class DocumentProcessor:
     def _process_txt(self, file_obj: io.BytesIO) -> Tuple[str, int]:
         """Extract text from TXT document."""
         try:
-            text = file_obj.read().decode('utf-8')
+            text: str = file_obj.read().decode('utf-8')
             # Count pages by assuming a page is ~3000 characters
-            page_count = max(1, len(text) // 3000)
+            page_count: int = max(1, len(text) // 3000)
             return text, page_count
         except Exception as e:
             logger.error(f"Error processing TXT: {str(e)}")
@@ -129,9 +138,9 @@ class DocumentProcessor:
     def _process_docx(self, file_obj: io.BytesIO) -> Tuple[str, int]:
         """Extract text from DOCX document."""
         try:
-            text = docx2txt.process(file_obj)
+            text: str = docx2txt.process(file_obj)
             # docx2txt doesn't provide page count, so we estimate
-            page_count = max(1, len(text) // 3000)
+            page_count: int = max(1, len(text) // 3000)
             return text, page_count
         except Exception as e:
             logger.error(f"Error processing DOCX: {str(e)}")
@@ -139,23 +148,23 @@ class DocumentProcessor:
 
 def analyze_text(text: str) -> Dict[str, Any]:
     """Analyze text and return statistics."""
-    words = re.findall(r'\b\w+\b', text.lower())
-    sentences = re.split(r'[.!?]+', text)
+    words: List[str] = re.findall(r'\b\w+\b', text.lower())
+    sentences: List[str] = re.split(r'[.!?]+', text)
     
     # Count words
-    word_count = len(words)
+    word_count: int = len(words)
     
     # Count sentences (excluding empty)
-    sentence_count = sum(1 for s in sentences if s.strip())
+    sentence_count: int = sum(1 for s in sentences if s.strip())
     
     # Calculate average sentence length
-    avg_sentence_length = word_count / max(1, sentence_count)
+    avg_sentence_length: float = word_count / max(1, sentence_count)
     
     # Find most common words
-    common_words = Counter(words).most_common(10)
+    common_words: List[Tuple[str, int]] = Counter(words).most_common(10)
     
     # Estimate reading time (average reading speed: 200 words per minute)
-    reading_time_minutes = word_count / 200
+    reading_time_minutes: float = word_count / 200
     
     return {
         "word_count": word_count,
@@ -167,23 +176,19 @@ def analyze_text(text: str) -> Dict[str, Any]:
     }
 
 def extract_keywords(text: str, top_n: int = 5) -> List[str]:
-    """Extract potential keywords from text."""
-    # This is a simple implementation - consider using NLTK or spaCy for better results
-    words = re.findall(r'\b[a-zA-Z]{3,15}\b', text.lower())
-    
-    # Filter out common stop words
-    stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 
-                 'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by',
-                 'about', 'against', 'between', 'into', 'through', 'during', 'before',
-                 'after', 'above', 'below', 'from', 'up', 'down', 'of', 'off', 'over',
-                 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when',
-                 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more',
-                 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own',
-                 'same', 'so', 'than', 'too', 'very', 'can', 'will', 'just', 'should',
-                 'now', 'this', 'that'}
-    
-    filtered_words = [word for word in words if word not in stop_words]
-    
-    # Count and return top keywords
-    word_freq = Counter(filtered_words)
-    return [word for word, _ in word_freq.most_common(top_n)]
+    """Extract potential keywords from text using spaCy."""
+    try:
+        nlp = spacy.load("en_core_web_sm")
+        doc = nlp(text)
+        keywords = [token.text.lower() for token in doc if token.pos_ in ["NOUN", "PROPN"] and len(token.text) > 2]
+        word_freq = Counter(keywords)
+        return [word for word, _ in word_freq.most_common(top_n)]
+    except Exception as e:
+        logger.error(f"Error extracting keywords: {str(e)}")
+        # Fallback to simple method
+        words = re.findall(r'\b[a-zA-Z]{3,15}\b', text.lower())
+        stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 
+                     'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by'}
+        filtered_words = [word for word in words if word not in stop_words]
+        word_freq = Counter(filtered_words)
+        return [word for word, _ in word_freq.most_common(top_n)]
