@@ -8,5 +8,4 @@ docx2txt
 faiss-cpu
 streamlit
 spacy
-en-core-web-sm==3.8.4
 langdetect
