@@ -21,6 +21,8 @@ import docx2txt
 import re
 from collections import Counter
 import spacy
+from spacy.util import is_package
+
 
 # Configure logging
 logger: logging.Logger = logging.getLogger(__name__)
@@ -48,12 +50,18 @@ class DocumentProcessor:
     }
     
     def __init__(self):
+        # Ensure spaCy model is available
+        if not is_package("en_core_web_sm"):
+            import spacy.cli
+            spacy.cli.download("en_core_web_sm")
+
+        self.nlp = spacy.load("en_core_web_sm")
+
         self.processors: Dict[str, callable] = {
             '.pdf': self._process_pdf,
             '.txt': self._process_txt,
             '.docx': self._process_docx,
         }
-        self.nlp = spacy.load("en_core_web_sm")
     
     def is_supported(self, filename: str) -> bool:
         """Check if the file type is supported."""
