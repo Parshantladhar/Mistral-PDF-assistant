@@ -20,9 +20,6 @@ import docx2txt
 # For text analysis
 import re
 from collections import Counter
-import spacy
-from spacy.util import is_package
-
 
 # Configure logging
 logger: logging.Logger = logging.getLogger(__name__)
@@ -50,15 +47,11 @@ class DocumentProcessor:
     }
     
     def __init__(self):
-    # Load the spaCy language model (must be preinstalled via requirements.txt)
-        self.nlp = spacy.load("en_core_web_sm")
-
         self.processors: Dict[str, callable] = {
             '.pdf': self._process_pdf,
             '.txt': self._process_txt,
             '.docx': self._process_docx,
         }
-
     
     def is_supported(self, filename: str) -> bool:
         """Check if the file type is supported."""
@@ -181,19 +174,16 @@ def analyze_text(text: str) -> Dict[str, Any]:
     }
 
 def extract_keywords(text: str, top_n: int = 5) -> List[str]:
-    """Extract potential keywords from text using spaCy."""
+    """Extract potential keywords from text using regex and frequency analysis."""
     try:
-        nlp = spacy.load("en_core_web_sm")
-        doc = nlp(text)
-        keywords = [token.text.lower() for token in doc if token.pos_ in ["NOUN", "PROPN"] and len(token.text) > 2]
-        word_freq = Counter(keywords)
-        return [word for word, _ in word_freq.most_common(top_n)]
-    except Exception as e:
-        logger.error(f"Error extracting keywords: {str(e)}")
-        # Fallback to simple method
         words = re.findall(r'\b[a-zA-Z]{3,15}\b', text.lower())
         stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 
-                     'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by'}
+                      'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by'}
         filtered_words = [word for word in words if word not in stop_words]
         word_freq = Counter(filtered_words)
-        return [word for word, _ in word_freq.most_common(top_n)]
+        keywords = [word for word, _ in word_freq.most_common(top_n)]
+        logger.info(f"Extracted {len(keywords)} keywords")
+        return keywords
+    except Exception as e:
+        logger.error(f"Error extracting keywords: {str(e)}")
+        return []
