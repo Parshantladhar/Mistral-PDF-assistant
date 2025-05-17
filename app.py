@@ -15,7 +15,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 # App configuration
 APP_TITLE: str = "Mistral Docs Assistant"
-APP_DESCRIPTION: str = "Upload your documents or images and ask questions about their content"
+APP_DESCRIPTION: str = "Upload your documents and ask questions about their content"
 
 # Initialize session state variables
 def init_session_state() -> None:
@@ -97,7 +97,7 @@ def process_documents(files: List[st.runtime.uploaded_file_manager.UploadedFile]
             st.error(f"File {file.name} exceeds 10MB limit.")
             return
     
-    with st.spinner("Processing documents and images..."):
+    with st.spinner("Processing documents..."):
         progress_bar = st.progress(0)
         try:
             # Store uploaded files in session state
@@ -146,14 +146,14 @@ def process_documents(files: List[st.runtime.uploaded_file_manager.UploadedFile]
             )
             
             st.session_state.processing_done = True
-            st.success(f"✅ Successfully processed {len(files)} documents/images!")
+            st.success(f"✅ Successfully processed {len(files)} documents!")
             
             # Show document details
             display_document_stats(document_text)
             
         except Exception as e:
-            st.error(f"Error processing documents/images: {str(e)}")
-            if "encrypted" in text.lower():
+            st.error(f"Error processing documents: {str(e)}")
+            if "encrypted" in str(e).lower():
                 st.info("Tip: Ensure the PDF is not password-protected.")
             logger.error(f"Document processing error: {str(e)}")
             st.session_state.processing_done = False
@@ -161,7 +161,7 @@ def process_documents(files: List[st.runtime.uploaded_file_manager.UploadedFile]
 def handle_user_input(user_question: str) -> None:
     """Process user question and display response."""
     if not st.session_state.conversation:
-        st.warning("⚠️ Please upload and process documents or images first.")
+        st.warning("⚠️ Please upload and process documents first.")
         return
     
     # Get response
@@ -213,26 +213,26 @@ def main() -> None:
     
     # Sidebar
     with st.sidebar:
-        st.title("📁 Document/Image Upload")
-        st.markdown("Upload your documents or images and configure the assistant")
+        st.title("📁 Document Upload")
+        st.markdown("Upload your documents and configure the assistant")
         
         # File upload
         uploaded_files: Optional[List[st.runtime.uploaded_file_manager.UploadedFile]] = st.file_uploader(
-            "Upload documents or images",
+            "Upload documents",
             accept_multiple_files=True, 
-            type=["pdf", "txt", "docx", "png", "jpg", "jpeg"]
+            type=["pdf", "txt", "docx"]
         )
         
         # Process button
-        if st.button("Process Documents/Images", type="primary"):
+        if st.button("Process Documents", type="primary"):
             if uploaded_files:
                 process_documents(uploaded_files)
             else:
-                st.error("Please upload at least one document or image.")
+                st.error("Please upload at least one document.")
         
         # Display document count if documents are uploaded
         if st.session_state.document_count > 0:
-            st.info(f"📄 {st.session_state.document_count} documents/images uploaded")
+            st.info(f"📄 {st.session_state.document_count} documents uploaded")
         
         # History button
         if st.button("📜 Toggle History"):
@@ -316,7 +316,7 @@ def main() -> None:
         st.markdown("### About")
         st.markdown("""
         This app uses [Mistral AI](https://mistral.ai/) and [LangChain](https://langchain.com/) 
-        to provide intelligent document and image question answering.
+        to provide intelligent document question answering.
         """)
     
     # Main area
@@ -326,7 +326,7 @@ def main() -> None:
     # Display chat interface only if documents are processed
     if st.session_state.processing_done:
         # Chat input area with form to clear input
-        st.markdown("### Ask questions about your documents or images")
+        st.markdown("### Ask questions about your documents")
         with st.form(key="chat_form", clear_on_submit=True):
             user_question: str = st.text_input("Your question:", key="chat_input_field")
             submit_button = st.form_submit_button("Send")
@@ -336,21 +336,20 @@ def main() -> None:
             
     else:
         # Display instructions when no documents are processed
-        st.info("👈 Please upload your documents or images using the sidebar and click 'Process Documents/Images' to begin")
+        st.info("👈 Please upload your documents using the sidebar and click 'Process Documents' to begin")
         
         # Show demo area
         st.markdown("## How it works")
         st.markdown("""
-        1. **Upload** your documents (PDF, TXT, DOCX) or images (PNG, JPG, JPEG)
+        1. **Upload** your documents (PDF, TXT, DOCX)
         2. **Process** them to extract information
         3. **Ask questions** about the content
-        4. Get **intelligent answers** based on your documents or images
+        4. Get **intelligent answers** based on your documents
         
         This application uses:
         - 🧠 Mistral AI for understanding and generating responses
         - 📊 FAISS vector database for efficient retrieval
         - 🔗 LangChain for orchestrating the AI workflow
-        - 📷 Tesseract OCR for extracting text from images
         """)
 
 
