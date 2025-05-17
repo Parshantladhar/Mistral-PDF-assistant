@@ -95,7 +95,7 @@ def validate_config(config: Dict[str, Any]) -> Dict[str, Any]:
     
     if "model_name" in config:
         model_name = config["model_name"]
-        valid_models = ["mistral-small", "mistral-medium", "mistral-large"]
+        valid_models = ["mistral-small", "mistral-medium"]
         validated["model_name"] = model_name if model_name in valid_models else DEFAULT_CONFIG["model_name"]
     
     if "temperature" in config:
