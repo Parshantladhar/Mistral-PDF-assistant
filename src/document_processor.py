@@ -176,19 +176,23 @@ def analyze_text(text: str) -> Dict[str, Any]:
     }
 
 def extract_keywords(text: str, top_n: int = 5) -> List[str]:
-    """Extract potential keywords from text using spaCy."""
-    try:
-        nlp = spacy.load("en_core_web_sm")
-        doc = nlp(text)
-        keywords = [token.text.lower() for token in doc if token.pos_ in ["NOUN", "PROPN"] and len(token.text) > 2]
-        word_freq = Counter(keywords)
-        return [word for word, _ in word_freq.most_common(top_n)]
-    except Exception as e:
-        logger.error(f"Error extracting keywords: {str(e)}")
-        # Fallback to simple method
-        words = re.findall(r'\b[a-zA-Z]{3,15}\b', text.lower())
-        stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 
-                     'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by'}
-        filtered_words = [word for word in words if word not in stop_words]
-        word_freq = Counter(filtered_words)
-        return [word for word, _ in word_freq.most_common(top_n)]
+    """Extract potential keywords from text."""
+    # This is a simple implementation - consider using NLTK or spaCy for better results
+    words = re.findall(r'\b[a-zA-Z]{3,15}\b', text.lower())
+    
+    # Filter out common stop words
+    stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 
+                 'be', 'been', 'being', 'in', 'on', 'at', 'to', 'for', 'with', 'by',
+                 'about', 'against', 'between', 'into', 'through', 'during', 'before',
+                 'after', 'above', 'below', 'from', 'up', 'down', 'of', 'off', 'over',
+                 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when',
+                 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more',
+                 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own',
+                 'same', 'so', 'than', 'too', 'very', 'can', 'will', 'just', 'should',
+                 'now', 'this', 'that'}
+    
+    filtered_words = [word for word in words if word not in stop_words]
+    
+    # Count and return top keywords
+    word_freq = Counter(filtered_words)
+    return [word for word, _ in word_freq.most_common(top_n)]
