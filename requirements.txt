@@ -7,4 +7,8 @@ PyPDF2
 docx2txt
 faiss-cpu
 streamlit
+spacy
+langdetect
+pytesseract 
+Pillow
 -e .
