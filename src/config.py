@@ -3,7 +3,7 @@ Configuration module for the Mistral Docs Assistant.
 """
 import os
 import json
-from typing import Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 from enum import Enum
 from dotenv import load_dotenv
