@@ -17,10 +17,6 @@ from PyPDF2 import PdfReader
 # For DOCX processing
 import docx2txt
 
-# For image processing
-from PIL import Image
-import pytesseract
-
 # For text analysis
 import re
 from collections import Counter
@@ -49,9 +45,6 @@ class DocumentProcessor:
         '.pdf': 'application/pdf',
         '.txt': 'text/plain',
         '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
     }
     
     def __init__(self):
@@ -59,9 +52,6 @@ class DocumentProcessor:
             '.pdf': self._process_pdf,
             '.txt': self._process_txt,
             '.docx': self._process_docx,
-            '.png': self._process_image,
-            '.jpg': self._process_image,
-            '.jpeg': self._process_image,
         }
         self.nlp = spacy.load("en_core_web_sm")
     
@@ -155,24 +145,6 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Error processing DOCX: {str(e)}")
             raise
-    
-    def _process_image(self, file_obj: io.BytesIO) -> Tuple[str, int]:
-        """Extract text from image using OCR."""
-        try:
-            # Open image with Pillow
-            image = Image.open(file_obj)
-            # Perform OCR
-            text: str = pytesseract.image_to_string(image, lang='eng')
-            # Check if text is empty or only whitespace
-            if not text.strip():
-                logger.warning(f"No text extracted from image: {file_obj}")
-                text = "ERROR: No text extracted from image"
-            # Assume 1 page for images
-            page_count: int = 1
-            return text, page_count
-        except Exception as e:
-            logger.error(f"Error processing image: {str(e)}")
-            return f"ERROR: Failed to process image: {str(e)}", 1
 
 def analyze_text(text: str) -> Dict[str, Any]:
     """Analyze text and return statistics."""
