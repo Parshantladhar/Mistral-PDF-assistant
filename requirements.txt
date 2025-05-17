@@ -7,5 +7,3 @@ PyPDF2
 docx2txt
 faiss-cpu
 streamlit
-
-
