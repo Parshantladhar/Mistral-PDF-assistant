@@ -109,14 +109,36 @@ def process_documents(files: List[st.runtime.uploaded_file_manager.UploadedFile]
             st.session_state.document_text = document_text
             
             # Update progress bar based on completed documents
-            progress_bar.progress(1.0)
+            progress_bar.progress(0.5)
             
             # Combine all document texts
-            all_text: str = " ".join(text for text in document_text.values() if not text.startswith("ERROR:"))
+            all_text: str = " ".join(text for text in document_text.values() if not text.startswith("ERROR:") and text.strip())
             
-            # Process text into chunks and create vector store
+            # Check if any valid text was extracted
+            if not all_text.strip():
+                st.error("No valid text extracted from the uploaded files. Please check the files and try again.")
+                logger.error("No valid text extracted from uploaded files")
+                st.session_state.processing_done = False
+                return
+            
+            # Process text into chunks
             text_chunks: List[str] = get_text_chunks(all_text, st.session_state.config)
+            if not text_chunks:
+                st.error("Failed to create text chunks. The extracted text may be too short or invalid.")
+                logger.error("Text chunking resulted in empty list")
+                st.session_state.processing_done = False
+                return
+            
+            # Create vector store
             vector_store = get_vector_store(text_chunks)
+            if vector_store is None:
+                st.error("Failed to create vector store. Please try again with different files.")
+                logger.error("Vector store creation returned None")
+                st.session_state.processing_done = False
+                return
+            
+            # Update progress bar
+            progress_bar.progress(1.0)
             
             # Initialize conversation chain
             st.session_state.conversation = get_conversational_chain(
@@ -333,4 +355,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
